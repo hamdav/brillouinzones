@@ -1,118 +1,130 @@
 import numpy as np
 
 class BZ:
-    def __init__(self, v2=[0, 1]):
+    def __init__(self, v2=[0, 1], n=3):
         """
         v2 is the second basis vector. The first is always [1, 0]
 
         We assume that v2 is such that there was no smaller v2 that would result in the same lattice.
         """
+        self.tol = 1e-8
         self.v1 = np.array([1, 0])
         self.v2 = np.array(v2)
+        self.toLatticeCoords = np.linalg.inv(np.column_stack((self.v1, self.v2)))
         self.bzones = dict()
+        self.n = n
+
+        self.latticePoints = []
+        for i in range(-self.n, self.n+1):
+            for j in range(-self.n, self.n+1):
+                if not i == j == 0:
+                    self.latticePoints.append(i * self.v1 + j * self.v2)
+
+        print(f"Calculated latticePoints: length {len(self.latticePoints)}")
+        # 
+        circleCenters = []
+        seenCenters = set()
+        for i, p in enumerate(self.latticePoints[:-1]):
+            if i % 100 == 0:
+                print(i)
+            for q in self.latticePoints[i+1:]:
+                # If q is a multiple of p
+                if np.abs(np.cross(p, q)) < self.tol:
+                    continue
+
+                center = self.findCircleCenter(p, q)
+
+                # If the circle obviously contains more than n points
+                # The largest rectangle that fits in a circle of radius r
+                # is a square with sidelength a = 2 * r / sqrt(2). 
+                # The smalles number of points inside such a rectangle is
+                # floor(a / v2_y) * floor(a / v1_x) maybe - 4 because the corners
+                # shouldn't count
+                a = np.linalg.norm(center) * np.sqrt(2)
+                if np.floor(a / self.v2[1]) * np.floor(a) > self.n:
+                    continue
+
+                centerTuple = tuple(np.around(center, decimals=8))
+                if centerTuple in seenCenters:
+                    continue
+                #for seenCenter in circleCenters:
+                    #if np.allclose(seenCenter, center):
+                        #break
+
+                else:
+                    seenCenters.add(centerTuple)
+                    seenCenters.add((-centerTuple[0], -centerTuple[1]))
+                    circleCenters.append(center)
+                    circleCenters.append(-center)
+
+        print(len(circleCenters))
+        #for center in filter(lambda c: np.linalg.norm(c) < self.n/2, circleCenters):
+        for center in circleCenters:
+            pointsInside, pointsOnEdge = self.latticePointsInCircle(center)
+            for zone in range(pointsInside + 1, pointsInside + pointsOnEdge):
+                if zone in self.bzones:
+                    self.bzones[zone].append(center)
+                else:
+                    self.bzones[zone] = [center]
+
+    def latticePointsInCircle(self, center):
+        """
+        Return the number of lattice points inside the circle
+        and the number of lattice points on the edge
+        """
+        # First, find the smallest parallellogram enclosing the circle
+        radius = np.linalg.norm(center)
+        if radius > self.n:
+            return -1
+
+        # Calculate a1 lower bound
+        d = 0
+        a1Lo = 0
+        while abs(d) <= radius + self.tol:
+            d = np.cross(self.v2, a1Lo * self.v1 - center) / np.linalg.norm(self.v2)
+            a1Lo -= 1
+        # Calculate a1 high bound
+        d = 0
+        a1Hi = 0
+        while abs(d) <= radius + self.tol:
+            d = np.cross(self.v2, a1Hi * self.v1 - center) / np.linalg.norm(self.v2)
+            a1Hi += 1
+        # Calculate a2 lower bound
+        d = 0
+        a2Lo = 0
+        while abs(d) <= radius + self.tol:
+            d = np.cross(self.v1, a2Lo * self.v2 - center) / np.linalg.norm(self.v1)
+            a2Lo -= 1
+        # Calculate a2 high bound
+        d = 0
+        a2Hi = 0
+        while abs(d) <= radius + self.tol:
+            d = np.cross(self.v1, a2Hi * self.v2 - center) / np.linalg.norm(self.v1)
+            a2Hi += 1
+
+        # For each latticePoint in this parallellogram, check if it is inside the circle
+        # If so, increment count
+        insideCount = 0
+        edgeCount = 0
+        for a1 in range(a1Lo, a1Hi + 1):
+            for a2 in range(a2Lo, a2Hi + 1):
+                d = np.linalg.norm(a1 * self.v1 + a2 * self.v2 - center)
+                if d < radius - self.tol:
+                    insideCount += 1
+                elif abs(d - radius) < self.tol:
+                    edgeCount += 1
+
+        return insideCount, edgeCount
+
         
-        self.calculate1BZ()
-
-    def lineFromLatticePoint(self, a1, a2):
-        # The line is defined as begin the points
-        # equidistant from the origin and the lattice point
-        point = (a1 * self.v1 + a2 * self.v2) / 2
-
-        # vec is orthogonal to point
-        vec = np.array([-point[1], point[0]])
-
-        return Line(point, vec)
-
-    def calculate1BZ(self):
-        # While calculating 1BZ we need only consider lines from the points
-        # that have at most one step in any direction
-        # I.e. points (0, 1), (1, 0), (1, 1), (-1, 0), ...
-        # This is because of the assumption that v2 is the smallest equivalent vector. 
-        self.lines = [self.lineFromLatticePoint(0, 1),
-                      self.lineFromLatticePoint(1, 1),
-                      self.lineFromLatticePoint(1, 0),
-                      self.lineFromLatticePoint(1, -1),
-                      self.lineFromLatticePoint(0, -1),
-                      self.lineFromLatticePoint(-1, -1),
-                      self.lineFromLatticePoint(-1, 0),
-                      self.lineFromLatticePoint(-1, 1)]
+    def findCircleCenter(self, p, q):
+        A = 2 * np.row_stack((p,q))
+        b = np.array([np.dot(p, p), np.dot(q, q)])
+        return np.linalg.solve(A, b)
 
 
-        # The point 1/2 * v2 on the line from the point v2 (e.g. (0, 1))
-        # will always be on the boundry of 1BZ because of the assumtion that
-        # v2 is the smallest equivalent vector.
-        p0 = self.v2 / 2
-        l0 = self.lines[0]
-        p = p0
-        l = l0
-        self.bzones[1] = [p0]
+    def getBrillouinZone(self, n):
+        return sorted(self.bzones[n], key=angle)
 
-        while True:
-            p, l = getNextIntersect(l, p, self.lines)
-
-            if p is None:
-                raise RuntimeError
-            elif l == l0:
-                break
-            else:
-                self.bzones[1].append(p)
-        
-
-    def populateBzones(n):
-        pass
-
-
-    def getBrillouinZone(n):
-        pass
-
-class Line:
-    def __init__(self, point, vector):
-        self.point = np.array(point)
-        self.vector = np.array(vector)
-
-        
-def getNextIntersect(line, point, lines):
-    """
-    Imagine you are hanging out on @line at point @point.
-    Then you start wandering along @line in whichever direction is clockwise
-    around the origin. This function returns the first intersection of @line
-    with any line in @lines that you encounter along with the line it intersects.
-    If there is none, returns None
-
-    @line is a Line,
-    @point is a np.array([x, y])
-    @lines is a list of Lines
-    @returns tuple(np.array([x, y]), Line)
-    """
-    
-    # Calculate all intersections
-    # The intersection of line1 and line2 is given by the equation
-    intersections = [(getIntersect(line, l), l) for l in lines if getIntersect(line, l) is not None]
-
-    # The intersection point that is the closest to p but still clockwise
-    # is the one that has the largest cross product with p that is negative
-    crossProducts = [(np.cross(point, ipoint), ipoint, l) for ipoint, l in intersections]
-    candidates = filter(lambda x: x[0] < 0, crossProducts)
-
-    if not candidates:
-        return (None, None)
-
-    closestIntersect = max(candidates, key=lambda x: x[0])
-
-    return (closestIntersect[1], closestIntersect[2])
-
-
-def getIntersect(line1, line2):
-    """
-    Returns intersection of line1 and line2 on the form np.array([x, y])
-    if line1 == line2, return None
-    """
-    if line1 == line2:
-        return None
-
-    try:
-        c1, c2 = np.linalg.solve(np.column_stack((line1.vector, line2.vector)), line1.point - line2.point)
-    except np.linalg.LinAlgError:
-        return None
-
-    return line1.vector * c1 + line1.point
+def angle(point):
+    return np.arctan2(point[1], point[0])
