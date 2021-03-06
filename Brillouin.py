@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 class BZ:
     def __init__(self, v2=[0, 1], n=3):
@@ -38,8 +39,7 @@ class BZ:
                 # The largest rectangle that fits in a circle of radius r
                 # is a square with sidelength a = 2 * r / sqrt(2). 
                 # The smalles number of points inside such a rectangle is
-                # floor(a / v2_y) * floor(a / v1_x) maybe - 4 because the corners
-                # shouldn't count
+                # floor(a / v2_y) * floor(a / v1_x) 
                 a = np.linalg.norm(center) * np.sqrt(2)
                 if np.floor(a / self.v2[1]) * np.floor(a) > self.n:
                     continue
@@ -77,33 +77,51 @@ class BZ:
         if radius > self.n:
             return -1
 
-        # Calculate a1 lower bound
-        d = 0
-        a1Lo = 0
-        while abs(d) <= radius + self.tol:
-            d = np.cross(self.v2, a1Lo * self.v1 - center) / np.linalg.norm(self.v2)
-            a1Lo -= 1
-        # Calculate a1 high bound
-        d = 0
-        a1Hi = 0
-        while abs(d) <= radius + self.tol:
-            d = np.cross(self.v2, a1Hi * self.v1 - center) / np.linalg.norm(self.v2)
-            a1Hi += 1
-        # Calculate a2 lower bound
-        d = 0
-        a2Lo = 0
-        while abs(d) <= radius + self.tol:
-            d = np.cross(self.v1, a2Lo * self.v2 - center) / np.linalg.norm(self.v1)
-            a2Lo -= 1
-        # Calculate a2 high bound
-        d = 0
-        a2Hi = 0
-        while abs(d) <= radius + self.tol:
-            d = np.cross(self.v1, a2Hi * self.v2 - center) / np.linalg.norm(self.v1)
-            a2Hi += 1
+        # Calculate a1 bounds
+        # The distance from the line a1 * v1 + lambda * v2 to the center point
+        # is | v2 x (a1 * v1 - center) | / |v2|
+        # where x denotes crossproduct.
+        # We thus want to solve
+        # | v2 x (a1 * v1 - center) | / |v2| < radius
+        # for the smallest (in abs value) integer a1 
+        # | a1 * v2 x v1 - v2 x center | < radius * |v2|
+        # If rightside positive
+        # a1 * v2 x v1 - v2 x center < radius * |v2|
+        # a1 * v2 x v1 < radius * |v2| + v2 x center
+        # a1 > (radius * |v2| + v2 x center) / v2 x v1     
+        #   inequality switch as v2 x v1 is negative
+        # If rightside negative
+        # v2 x center - a1 * v2 x v1 < radius * |v2|
+        # a1 * v2 x v1 > v2 x center - radiuss * |v2|
+        # a1 < (v2 x center - radius * |v2|) / v2 x v1
+        # Once again, the inequality switches because v2 x v1 is negative
+        a1Lo = (np.cross(self.v2, center) + (radius + self.tol) * np.linalg.norm(self.v2)) / np.cross(self.v2, self.v1)
+        a1Hi = (np.cross(self.v2, center) - (radius + self.tol) * np.linalg.norm(self.v2)) / np.cross(self.v2, self.v1)
+
+        # Calculate a1 bounds
+        # The distance from the line a2 * v2 + lambda * v1 to the center point
+        # is | v1 x (a2 * v2 - center) | / |v1|
+        # Like before
+        # | v1 x (a2 * v2 - center) | < radius * |v1|
+        # If positive
+        # a2 v1 x v2 < radius * |v1| + v1 x center
+        # a2 < (radius * |v1| + v2 x center) / v1 x v2
+        # If negative
+        # a2 v1 x v2 > (v1 x center - radius * |v1|)
+        # a2 > (v1 x center - radius * |v1|) / v1 x v2
+        a2Lo = (np.cross(self.v1, center) - (radius + self.tol) * np.linalg.norm(self.v1)) / np.cross(self.v1, self.v2)
+        a2Hi = (np.cross(self.v1, center) + (radius + self.tol) * np.linalg.norm(self.v1)) / np.cross(self.v1, self.v2)
+
+        # These are the most extreme bounds. Since the lattice coordinates are integers,
+        # We can ceil / floor them accordingly. 
+        a1Lo = math.ceil(a1Lo)
+        a2Lo = math.ceil(a2Lo)
+        a1Hi = math.floor(a1Hi)
+        a2Hi = math.floor(a2Hi)
 
         # For each latticePoint in this parallellogram, check if it is inside the circle
-        # If so, increment count
+        # If so, increment insideCount
+        # If instead it is on the boundry, increment edgeCount
         insideCount = 0
         edgeCount = 0
         for a1 in range(a1Lo, a1Hi + 1):
