@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MultipleLocator
 
 import Brillouin as B
 
@@ -16,71 +16,70 @@ import Brillouin as B
 # Set the number of brillouin zones to plot
 # A value of 80 takes about 70 seconds on my machine,
 # 20 take about 4 seconds
-n = 20
+n = 40
 
 # Set the second primitive basis vector.
 # The first is always [1,0].
 # If you want some other first primitive basis vector,
 # the author suggests you tilt your head and zoom in
-
-for x in np.linspace(-0.5,0.5,21):
-    v = [x, math.sqrt(3)/2]
+v = [0.0, 1.0]
 
 
-    ############################
-    #   Calculation of points
-    ############################
+############################
+#   Calculation of points
+############################
 
-    start = time.time()
+start = time.time()
 
-    bz = B.getBrillouinZonePoints(v, n)
+bz = B.getBrillouinZonePoints(v, n)
 
-    end = time.time()
-    print(f"Time taken: {end - start}")
+end = time.time()
+print(f"Time taken: {end - start}")
 
-    ############################
-    #   Plotting
-    ############################
+############################
+#   Plotting
+############################
 
-    plt.style.use('seaborn-darkgrid')
+# Use a pretty style
+plt.style.use('seaborn-darkgrid')
 
-    patches = []
+patches = []
 
-    # Plot "backwards" so the later zones do not cover the earlier
-    for i in range(n, 0, -1):
-        patches.append(Polygon(bz[i]))
+# Plot "backwards" so the later zones do not cover the earlier
+for i in range(n, 0, -1):
+    patches.append(Polygon(bz[i]))
 
-    pc = PatchCollection(patches, alpha=1)
+pc = PatchCollection(patches, alpha=1)
 
-    # Construct the colors
-    cmap = plt.get_cmap("tab20b")
-    colors = cmap(np.tile(np.linspace(0,1,20), (n-1) // 20 + 1))
-    pc.set_color(colors[::-1])
+# Construct the colors
+cmap = plt.get_cmap("tab20b")
+colors = cmap(np.tile(np.linspace(0,1,20), (n-1) // 20 + 1))
+pc.set_color(colors[::-1])
 
-    # Create the figure and axis
-    fig, ax = plt.subplots()
+# Create the figure and axis
+fig, ax = plt.subplots()
 
-    # Add the collection of polygons
-    ax.add_collection(pc)
+# Add the collection of polygons
+ax.add_collection(pc)
 
-    # Set limits
-    xmax = max([p[0] for p in bz[n]])
-    ymax = max([p[1] for p in bz[n]])
-    ax.set_xlim(-xmax, xmax)
-    ax.set_ylim(-ymax, ymax)
+# Set limits
+xmax = max([p[0] for p in bz[n]])
+ymax = max([p[1] for p in bz[n]])
+ax.set_xlim(-xmax, xmax)
+ax.set_ylim(-ymax, ymax)
 
-    # Make aspect ratio 1:1
-    ax.axis('equal')
+# Make aspect ratio 1:1
+ax.axis('equal')
 
-    # Make axis fill figure
-    ax.set_position([0, 0, 1, 1])
+# Make axis fill figure
+ax.set_position([0, 0, 1, 1])
 
-    # Set ticks to the integers
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+# Set ticks (and gridlines) on every integer multiple of 1
+ax.xaxis.set_major_locator(MultipleLocator(1))
+ax.yaxis.set_major_locator(MultipleLocator(1))
 
-    # Show the plot
-    #plt.show()
+# Show the plot
+plt.show()
 
-    # Uncomment to save the figure to disk
-    plt.savefig(f"brillouin_{v[0]:.2f}-{v[1]:.2f}.pdf")
+# Uncomment to save the figure to disk
+#plt.savefig(f"brillouin_{v[0]:.2f}-{v[1]:.2f}.pdf")

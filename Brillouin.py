@@ -217,9 +217,16 @@ def latticePointsInCircle(u, v, center, tol=1e-8):
 
 
 def findCircleCenter(p, q):
+    """
+    Returns the coordinates of the center of the circle going through the origin
+    and points p and q as a np array
+    """
     A = 2 * np.row_stack((p,q))
     b = np.array([np.dot(p, p), np.dot(q, q)])
     return np.linalg.solve(A, b)
 
 def angle(point):
+    """
+    Returns the angle the point makes with the positive x-axis
+    """
     return np.arctan2(point[1], point[0])
