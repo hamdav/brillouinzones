@@ -28,7 +28,7 @@ containing k-4 points and touching at least 5 lattice points, and so on.
 
 ### Pretty figures
 
-First vector ```[1, 0]``` second vector ```[x, 1]```, where x goes from 0 to 1.
+Animation with first vector ```[1, 0]``` second vector ```[x, 1]```, where x goes from 0 to 1.
 ![Lovely gif](sqr.gif)
 
 60 brillouin zones of a hexagonal lattice.
