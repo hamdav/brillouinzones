@@ -29,13 +29,16 @@ containing k-4 points and touching at least 5 lattice points, and so on.
 ### Pretty figures
 
 Animation with first vector ```[1, 0]``` second vector ```[x, 1]```, where x goes from 0 to 1.
-![Lovely gif](sqr.gif)
+![sqr](https://user-images.githubusercontent.com/40766399/110310207-900d1b00-8002-11eb-8872-3e400ae2840e.gif)
 
 60 brillouin zones of a hexagonal lattice.
-![Hexagonal Lattice](hex60.pdf)
+![hex60](https://user-images.githubusercontent.com/40766399/110309704-f80f3180-8001-11eb-89e8-8165f33d1b34.png)
 
 60 brillouin zones of an oblique lattice.
-![Oblique Lattice](oblique60.pdf)
+![oblique60](https://user-images.githubusercontent.com/40766399/110309759-065d4d80-8002-11eb-8d62-a651acc0c318.png)
 
 100 brillouin zones of a square lattice.
-![Square Lattice](square100.pdf)
+![square100](https://user-images.githubusercontent.com/40766399/110309779-0b220180-8002-11eb-963f-6bf20f00cc85.png)
+
+60 brillouin zones of a rectangular lattice.
+![theEye_0-4_60](https://user-images.githubusercontent.com/40766399/110309836-1ffe9500-8002-11eb-9390-371047a4e8f0.png)
